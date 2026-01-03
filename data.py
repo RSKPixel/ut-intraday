@@ -162,7 +162,7 @@ def kiteconnect_backfill(
     if kite is None:
         return status
 
-    live_instruments = pd.DataFrame(fetch_instruments()["data"])
+    live_instruments = pd.DataFrame(fetch_instruments())
     live_instruments = live_instruments[(live_instruments["exchange"] == exchange)]
 
     if no_of_candles > 2000:
