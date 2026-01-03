@@ -13,10 +13,10 @@ console = Console()
 
 
 def main():
-    os.system("cls" if os.name == "nt" else "clear")
+    start_time = datetime.now()
     print(
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Universal Trader - KiteConnect Backfilling Data ",
+        "Universal Trader - Key Breakout Daily Dow Theory Scanner",
     )
     today = datetime.now().date()
     yesterday = today - pd.Timedelta(days=2)
@@ -35,7 +35,12 @@ def main():
     portfolio = fetch_portfolio("NSE-FUT")
     signals = pd.DataFrame()
     for symbol in portfolio["name"].tolist():
-        print("Universal Trader Data: ", symbol, "                \r", end="")
+        print(
+            "Scanning for Key Breakout Daily Dow Theory : ",
+            symbol,
+            "                \r",
+            end="",
+        )
 
         data = history(
             symbol=symbol,
@@ -149,6 +154,9 @@ def main():
             showindex=False,
         )
     )
+    end_time = datetime.now()
+    duration = end_time - start_time
+    print(f"\nTime taken: {duration.seconds} seconds")
 
 
 def wait_until_next(waiting_minutes=1, seconds=1):
@@ -190,10 +198,10 @@ def wait_until_next(waiting_minutes=1, seconds=1):
 
 
 if __name__ == "__main__":
-    # clear the console
-
-    os.system("cls" if os.name == "nt" else "clear")
 
     while True:
+        os.system("cls" if os.name == "nt" else "clear")
+
         main()
+
         wait_until_next(waiting_minutes=5, seconds=0)
