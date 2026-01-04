@@ -127,11 +127,14 @@ def main():
     entry = entry.sort_values(by="datetime")
     entry.reset_index(drop=True, inplace=True)
     entry["entry_price"] = entry["entry_price"].round(2)
+    # add coma and add decimal as string formatting
     entry["stop_loss"] = entry["stop_loss"].round(2)
 
     disp = entry.copy()
-    disp["entry_price"] = disp["entry_price"].round(2)
 
+    disp["entry_price"] = disp["entry_price"].map("{:,.2f}".format)
+    disp["stop_loss"] = disp["stop_loss"].map("{:,.2f}".format)
+    disp["signal_price"] = disp["signal_price"].map("{:,.2f}".format)
     disp["datetime"] = disp["datetime"].dt.tz_localize(None)
     disp["datetime"] = disp["datetime"].dt.strftime("%Y-%m-%d %H:%M")
 
@@ -151,12 +154,25 @@ def main():
             ],
             headers="keys",
             tablefmt="psql",
+            colalign=(
+                "left",
+                "left",
+                "left",
+                "left",
+                "right",
+                "right",
+                "right",
+                "right",
+            ),
             showindex=False,
         )
     )
     end_time = datetime.now()
     duration = end_time - start_time
     print(f"\nTime taken: {duration.seconds} seconds")
+    entry.to_csv(
+        datetime.now().strftime("signals/kbdt-signals-%Y%m%d.csv"), index=False
+    )
 
 
 def wait_until_next(waiting_minutes=1, seconds=1):

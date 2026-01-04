@@ -35,7 +35,7 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
             profit_points = sell_price - buy_price
             setup_bar = True
 
-        if setup_bar and profit_points < 0:
+        if setup_bar and profit_points < 0 and lwv:
             df_original.at[df.index[-1], "kbdt"] = "buy"
             df_original.at[df.index[-1], "signal_price"] = buy_price
             df_original.at[df.index[-1], "signal"] = True
@@ -59,7 +59,7 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
             profit_points = sell_price - buy_price
             setup_bar = True
 
-        if setup_bar and profit_points < 0:
+        if setup_bar and profit_points < 0 and lwv:
             df_original.at[df.index[-1], "kbdt"] = "sell"
             df_original.at[df.index[-1], "signal_price"] = sell_price
             df_original.at[df.index[-1], "signal"] = True
