@@ -179,15 +179,11 @@ def kiteconnect_backfill(
     request_count = 0
     request_rate = 0
 
-    with Progress(
-        # SpinnerColumn(),
-        # TextColumn("[progress.description]{task.description}"),
-    ) as progress:
+    with Progress() as progress:
         task = progress.add_task("", total=instrument_count)
         start_time = time.time()
         for index, row in live_instruments.iterrows():
             symbol = row["tradingsymbol"]
-            # print("Backfilling: ", symbol, "                \r", end="")
             instrument_token = row["instrument_token"]
 
             try:

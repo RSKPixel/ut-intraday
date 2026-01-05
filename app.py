@@ -1,5 +1,6 @@
 from data import kiteconnect_backfill, fetch_portfolio, history, fetch_instruments
-from dependencies import kite_connect
+from dependencies import kite_connect, engine
+import numpy as np
 from universaltrader import ut
 import pandas as pd
 from datetime import datetime
@@ -8,6 +9,8 @@ from tabulate import tabulate
 from rich.console import Console
 from rich.live import Live
 from time import sleep
+from psycopg2.extras import execute_values
+from sqlalchemy.sql import text
 
 console = Console()
 
@@ -54,6 +57,9 @@ def main():
 
         signals = pd.concat([signals, signal], ignore_index=True)
 
+    print(
+        f"Scanning completed.                                                                  "
+    )
     entry = []
     for index, row in signals.iterrows():
         instrument = instruments[instruments["name"] == row["symbol"]].iloc[0]
@@ -124,6 +130,9 @@ def main():
                     )
                     break
     entry = pd.DataFrame(entry)
+    if entry.empty:
+        print("\nNo breakout signals found.")
+        return
     entry = entry.sort_values(by="datetime")
     entry.reset_index(drop=True, inplace=True)
     entry["entry_price"] = entry["entry_price"].round(2)
@@ -173,6 +182,32 @@ def main():
     entry.to_csv(
         datetime.now().strftime("signals/kbdt-signals-%Y%m%d.csv"), index=False
     )
+
+    # save to psql database
+    records = entry.to_dict(orient="records")
+    sql = text(
+        """
+        INSERT INTO tfw_signals (
+            datetime,
+            symbol,
+            tradingsymbol,
+            instrument_token,
+            trading_model,
+            signal,
+            signal_price,
+            lot_size,
+            entry_price,
+            stop_loss
+        ) VALUES (:datetime, :symbol, :tradingsymbol, :instrument_token, :trading_model, :signal, :signal_price, :lot_size, :entry_price, :stop_loss)
+        ON CONFLICT (datetime, tradingsymbol, trading_model)
+        DO NOTHING;
+        """
+    )
+
+    with engine.begin() as conn:  # auto-commit / rollback
+        conn.execute(sql, records)
+
+    return
 
 
 def wait_until_next(waiting_minutes=1, seconds=1):
