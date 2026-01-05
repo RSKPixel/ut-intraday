@@ -19,7 +19,7 @@ def main():
         "Universal Trader - Key Breakout Daily Dow Theory Scanner",
     )
     today = datetime.now().date()
-    yesterday = today - pd.Timedelta(days=2)
+    yesterday = today - pd.Timedelta(days=3)
 
     kite, status = kite_connect()
     if kite is None:

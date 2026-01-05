@@ -8,6 +8,8 @@ import numpy as np
 from sqlalchemy.sql import text
 from universaltrader.ssc import SwingPoints2
 from universaltrader.tools import ddt2, lv, atr, sma, asc, weekly_rdata
+from rich.progress import Progress, SpinnerColumn, TextColumn
+import time
 
 
 def fetch_portfolio(portfolio: str = "NFO") -> pd.DataFrame:
@@ -173,63 +175,94 @@ def kiteconnect_backfill(
 
     conn = engine.raw_connection()
     error = []
-    for index, row in live_instruments.iterrows():
-        symbol = row["tradingsymbol"]
-        print("Backfilling: ", symbol, "                \r", end="")
-        instrument_token = row["instrument_token"]
+    instrument_count = len(live_instruments)
+    request_count = 0
+    request_rate = 0
 
-        try:
-            data = kite.historical_data(
-                instrument_token,
-                from_date=from_date,
-                to_date=to_date,
-                continuous=True,
-                oi=True,
-                interval="day",
+    with Progress(
+        # SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+    ) as progress:
+        task = progress.add_task("", total=instrument_count)
+        start_time = time.time()
+        for index, row in live_instruments.iterrows():
+            symbol = row["tradingsymbol"]
+            # print("Backfilling: ", symbol, "                \r", end="")
+            instrument_token = row["instrument_token"]
+
+            try:
+                request_count += 1
+                data = kite.historical_data(
+                    instrument_token,
+                    from_date=from_date,
+                    to_date=to_date,
+                    continuous=True,
+                    oi=True,
+                    interval="day",
+                )
+            except Exception as e:
+                error.append(f"Error fetching data for {symbol}: {e}")
+                print(f"Error fetching data for {symbol}: {e}")
+                continue
+
+            if not data:
+                error.append(f"No data returned for {symbol}")
+                print(f"No data returned for {symbol}")
+                continue
+
+            df = pd.DataFrame(data)
+            df["datetime"] = pd.to_datetime(df["date"])
+            df["symbol"] = row["name"]
+            df.drop(columns=["date"], inplace=True)
+            df = df[
+                ["symbol", "datetime", "open", "high", "low", "close", "volume", "oi"]
+            ]
+            records = df.to_numpy().tolist()
+
+            sql = """
+                INSERT INTO tfw_eod (
+                    symbol,
+                    datetime,
+                    open,
+                    high,
+                    low,
+                    close,
+                    volume,
+                    oi
+                )
+                VALUES %s
+                ON CONFLICT (datetime, symbol)
+                DO UPDATE SET
+                    open = EXCLUDED.open,
+                    high = EXCLUDED.high,
+                    low = EXCLUDED.low,
+                    close = EXCLUDED.close,
+                    volume = EXCLUDED.volume,
+                    oi = EXCLUDED.oi;
+            """
+
+            with conn.cursor() as cursor:
+                execute_values(cursor, sql, records)
+                conn.commit()
+                completed = progress.tasks[task].completed + 1
+
+            elapsed_time = time.time() - start_time
+            request_rate = request_count / elapsed_time if elapsed_time > 0 else 0
+
+            if request_rate > 15:
+                time.sleep(0.1)
+
+            progress.update(
+                task,
+                advance=1,
+                description=f"Backfilled {completed:<{3}}/{instrument_count} | [bold green]{symbol:<{20}}[/bold green] | Rate: {request_rate:.2f} req/sec",
             )
-        except Exception as e:
-            error.append(f"Error fetching data for {symbol}: {e}")
-            print(f"Error fetching data for {symbol}: {e}")
-            continue
 
-        if not data:
-            error.append(f"No data returned for {symbol}")
-            print(f"No data returned for {symbol}")
-            continue
-
-        df = pd.DataFrame(data)
-        df["datetime"] = pd.to_datetime(df["date"])
-        df["symbol"] = row["name"]
-        df.drop(columns=["date"], inplace=True)
-        df = df[["symbol", "datetime", "open", "high", "low", "close", "volume", "oi"]]
-        records = df.to_numpy().tolist()
-
-        sql = """
-            INSERT INTO tfw_eod (
-                symbol,
-                datetime,
-                open,
-                high,
-                low,
-                close,
-                volume,
-                oi
-            )
-            VALUES %s
-            ON CONFLICT (datetime, symbol)
-            DO UPDATE SET
-                open = EXCLUDED.open,
-                high = EXCLUDED.high,
-                low = EXCLUDED.low,
-                close = EXCLUDED.close,
-                volume = EXCLUDED.volume,
-                oi = EXCLUDED.oi;
-        """
-
-        with conn.cursor() as cursor:
-            execute_values(cursor, sql, records)
-            conn.commit()
-
+        elapsed_time = time.time() - start_time
+        progress.update(
+            task,
+            description=f"[bold blue]Backfill completed: {instrument_count}/{instrument_count} | Time Elapsed: {elapsed_time:.2f} sec [/bold blue]",
+        )
     conn.close()
 
     return error
