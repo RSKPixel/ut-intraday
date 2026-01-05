@@ -181,7 +181,7 @@ def kiteconnect_backfill(
 
     with Progress(
         # SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
+        # TextColumn("[progress.description]{task.description}"),
     ) as progress:
         task = progress.add_task("", total=instrument_count)
         start_time = time.time()
