@@ -245,7 +245,7 @@ def kiteconnect_backfill(
             elapsed_time = time.time() - start_time
             request_rate = request_count / elapsed_time if elapsed_time > 0 else 0
 
-            if request_rate > 15:
+            if request_rate > 10:
                 time.sleep(0.1)
 
             progress.update(
