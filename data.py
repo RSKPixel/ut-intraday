@@ -245,13 +245,13 @@ def kiteconnect_backfill(
             elapsed_time = time.time() - start_time
             request_rate = request_count / elapsed_time if elapsed_time > 0 else 0
 
-            if request_rate > 10:
+            if request_rate > 15:
                 time.sleep(0.1)
 
             progress.update(
                 task,
                 advance=1,
-                description=f"Backfilled {completed:<{3}}/{instrument_count} | [bold green]{symbol:<{20}}[/bold green] | Rate: {request_rate:.2f} req/sec",
+                description=f"Backfilled {completed:<{3}}/{instrument_count} | [bold green]{symbol:<{20}}[/bold green] | Rate: {request_rate:<{5}.2f} req/sec",
             )
 
         elapsed_time = time.time() - start_time
