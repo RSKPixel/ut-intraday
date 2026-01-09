@@ -3,7 +3,7 @@ from dependencies import kite_connect, engine
 import numpy as np
 from universaltrader import ut
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from tabulate import tabulate
 from rich.console import Console
@@ -212,6 +212,11 @@ def main():
 
 def wait_until_next(waiting_minutes=1, seconds=1):
     now = datetime.now()
+    day = now.day
+    market_open_hour = 9
+    market_open_minute = 15
+    market_close_hour = 15
+    market_close_minute = 30
 
     next_minute = ((now.minute // waiting_minutes) + 1) * waiting_minutes
 
@@ -248,6 +253,85 @@ def wait_until_next(waiting_minutes=1, seconds=1):
     console.print("✅ Woke up for next run!\n")
 
 
+def wait_until_next_v2(waiting_minutes=1, seconds=1):
+    now = datetime.now()
+
+    # Market schedule
+    market_open_hour = 9
+    market_open_minute = 15
+    market_close_hour = 15
+    market_close_minute = 30
+
+    # Helper: compute next market open day (skipping weekends)
+    def next_market_open(date):
+        # If Saturday -> add 2 days (to Monday)
+        if date.weekday() == 5:  # Saturday
+            date += timedelta(days=2)
+        # If Sunday -> add 1 day (to Monday)
+        elif date.weekday() == 6:  # Sunday
+            date += timedelta(days=1)
+        return date.replace(
+            hour=market_open_hour, minute=market_open_minute, second=0, microsecond=0
+        )
+
+    # Check for weekend
+    if now.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        next_run = next_market_open(now)
+    else:
+        # Build today's open/close datetimes
+        market_open = now.replace(
+            hour=market_open_hour, minute=market_open_minute, second=0, microsecond=0
+        )
+        market_close = now.replace(
+            hour=market_close_hour, minute=market_close_minute, second=0, microsecond=0
+        )
+
+        # Before market open
+        if now < market_open:
+            next_run = market_open
+
+        # After market close
+        elif now >= market_close:
+            # If Friday after close → Monday open
+            next_day = now + timedelta(days=1)
+            next_run = next_market_open(next_day)
+
+        # Within market hours
+        else:
+            next_minute = ((now.minute // waiting_minutes) + 1) * waiting_minutes
+            if next_minute >= 60:
+                next_run = now.replace(
+                    hour=now.hour + 1, minute=0, second=seconds, microsecond=0
+                )
+            else:
+                next_run = now.replace(
+                    minute=next_minute, second=seconds, microsecond=0
+                )
+
+            # If next bucket crosses today's close
+            if next_run >= market_close:
+                next_day = now + timedelta(days=1)
+                next_run = next_market_open(next_day)
+
+    # Calculate sleep
+    wait_seconds = int((next_run - now).total_seconds())
+    if wait_seconds <= 0:
+        return
+
+    try:
+        with Live(console=console, refresh_per_second=4) as live:
+            for remaining in range(wait_seconds, 0, -1):
+                mins, secs = divmod(remaining, 60)
+                live.update(f"⏳ Sleeping... {mins:02d}m {secs:02d}s remaining")
+                sleep(1)
+
+    except KeyboardInterrupt:
+        console.print("\n⛔️ Interrupted by user.")
+        raise SystemExit(0)
+
+    console.print("✅ Woke up for next run!\n")
+
+
 if __name__ == "__main__":
 
     while True:
@@ -255,4 +339,4 @@ if __name__ == "__main__":
 
         main()
 
-        wait_until_next(waiting_minutes=5, seconds=0)
+        wait_until_next_v2(waiting_minutes=5, seconds=0)
