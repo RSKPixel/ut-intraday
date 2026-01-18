@@ -11,8 +11,11 @@ from rich.live import Live
 from time import sleep
 from psycopg2.extras import execute_values
 from sqlalchemy.sql import text
+import redis
+import json
 
 console = Console()
+r = redis.Redis(host="localhost", port=6379, db=0)
 
 
 def main():
@@ -21,14 +24,17 @@ def main():
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Universal Trader - Key Breakout Daily Dow Theory Scanner",
     )
+    r.publish("ut_status", "Ready")
     today = datetime.now().date()
     yesterday = today - pd.Timedelta(days=3)
 
     kite, status = kite_connect()
     if kite is None:
         print(status)
+        r.publish("ut_status", f"Kite Connect failed: {status}")
         return
     error = kiteconnect_backfill(timeframe="D", exchange="NFO", no_of_candles=3)
+
     if error:
         error_df = pd.DataFrame(error)
         print(tabulate(error_df, headers="keys", tablefmt="psql", showindex=False))
@@ -134,9 +140,14 @@ def main():
         print("\nNo breakout signals found.")
         return
     entry = entry.sort_values(by="datetime")
+
+    entry["datetime"] = pd.to_datetime(entry["datetime"], errors="coerce")
+
+    entry["datetime"] = entry["datetime"].dt.tz_localize(None)
+    entry["datetime"] = entry["datetime"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
     entry.reset_index(drop=True, inplace=True)
     entry["entry_price"] = entry["entry_price"].round(2)
-    # add coma and add decimal as string formatting
     entry["stop_loss"] = entry["stop_loss"].round(2)
 
     disp = entry.copy()
@@ -144,8 +155,10 @@ def main():
     disp["entry_price"] = disp["entry_price"].map("{:,.2f}".format)
     disp["stop_loss"] = disp["stop_loss"].map("{:,.2f}".format)
     disp["signal_price"] = disp["signal_price"].map("{:,.2f}".format)
-    disp["datetime"] = disp["datetime"].dt.tz_localize(None)
-    disp["datetime"] = disp["datetime"].dt.strftime("%Y-%m-%d %H:%M")
+    # disp["datetime"] = disp["datetime"].dt.tz_localize(None)
+    # disp["datetime"] = disp["datetime"].dt.strftime("%Y-%m-%d %H:%M")
+
+    r.publish("ut_status", json.dumps(entry.to_dict(orient="records")))
 
     print(
         tabulate(
@@ -207,6 +220,7 @@ def main():
     with engine.begin() as conn:  # auto-commit / rollback
         conn.execute(sql, records)
 
+    r.publish("ut_status", "Completed")
     return
 
 

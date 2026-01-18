@@ -6,3 +6,4 @@ sqlalchemy
 kiteconnect
 tabulate
 rich
+websockets
