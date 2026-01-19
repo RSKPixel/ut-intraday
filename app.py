@@ -24,20 +24,33 @@ def main():
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Universal Trader - Key Breakout Daily Dow Theory Scanner",
     )
-    r.publish("ut_status", "Ready")
+    r.publish(
+        "ut_status", json.dumps({"status": "ready", "data": [], "message": "Ready"})
+    )
     today = datetime.now().date()
     yesterday = today - pd.Timedelta(days=3)
 
     kite, status = kite_connect()
     if kite is None:
         print(status)
-        r.publish("ut_status", f"Kite Connect failed: {status}")
+        payload = {
+            "status": "error",
+            "data": [],
+            "message": f"Kite Connect failed: {status}",
+        }
+        r.publish("ut_status", json.dumps(payload))
         return
     error = kiteconnect_backfill(timeframe="D", exchange="NFO", no_of_candles=3)
 
     if error:
         error_df = pd.DataFrame(error)
         print(tabulate(error_df, headers="keys", tablefmt="psql", showindex=False))
+        payload = {
+            "status": "error",
+            "data": [],
+            "message": "Backfill error",
+        }
+        r.publish("ut_status", json.dumps(payload))
 
     instruments = fetch_instruments()
 
@@ -138,6 +151,16 @@ def main():
     entry = pd.DataFrame(entry)
     if entry.empty:
         print("\nNo breakout signals found.")
+        r.publish(
+            "ut_status",
+            json.dumps(
+                {
+                    "status": "success",
+                    "data": [],
+                    "message": "No breakout signals found.",
+                }
+            ),
+        )
         return
     entry = entry.sort_values(by="datetime")
 
@@ -155,10 +178,13 @@ def main():
     disp["entry_price"] = disp["entry_price"].map("{:,.2f}".format)
     disp["stop_loss"] = disp["stop_loss"].map("{:,.2f}".format)
     disp["signal_price"] = disp["signal_price"].map("{:,.2f}".format)
-    # disp["datetime"] = disp["datetime"].dt.tz_localize(None)
-    # disp["datetime"] = disp["datetime"].dt.strftime("%Y-%m-%d %H:%M")
 
-    r.publish("ut_status", json.dumps(entry.to_dict(orient="records")))
+    payload = {
+        "status": "success",
+        "message": f"{len(entry)} breakout signals found.",
+        "data": entry.to_dict(orient="records"),
+    }
+    r.publish("ut_status", json.dumps(payload))
 
     print(
         tabulate(
@@ -220,7 +246,12 @@ def main():
     with engine.begin() as conn:  # auto-commit / rollback
         conn.execute(sql, records)
 
-    r.publish("ut_status", "Completed")
+    payload = {
+        "status": "completed",
+        "data": [],
+        "message": "Scanning completed.",
+    }
+    r.publish("ut_status", json.dumps(payload))
     return
 
 

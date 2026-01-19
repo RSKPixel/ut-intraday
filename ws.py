@@ -3,75 +3,69 @@ import websockets
 import pandas as pd
 import json
 from tabulate import tabulate
+import os
 
 WS_URL = "ws://127.0.0.1:8080/ws"  # change to your endpoint
 
 
 async def consume():
-    async with websockets.connect(WS_URL) as websocket:
-        print("Connected to WebSocket")
+    websocket = None
 
-        state = "idle"  # states: idle -> expect_data -> expect_complete
-
+    try:
+        websocket = await websockets.connect(WS_URL)
         while True:
-            msg = await websocket.recv()
+            json_response = await websocket.recv()
+            response = json.loads(json_response)
+            status = response.get("status", "")
+            data = response.get("data", [])
+            message = response.get("message", "")
 
-            if state == "idle":
-                if msg.lower() == "ready":
-                    print("[WS] Ready received, expecting data next...")
-                    state = "expect_data"
-                else:
-                    print("[WS] Received:", msg)
+            print("[WS]: ", message)
 
-            elif state == "expect_data":
-                # This MUST be the JSON payload
-                try:
-                    payload = json.loads(msg)
-                    if isinstance(payload, list):
-                        df = pd.DataFrame(payload)
-                        print("[WS] DataFrame received:")
-                        print(
-                            tabulate(
-                                df[
-                                    [
-                                        "datetime",
-                                        "symbol",
-                                        "tradingsymbol",
-                                        "signal",
-                                        "lot_size",
-                                        "signal_price",
-                                        "entry_price",
-                                        "stop_loss",
-                                    ]
-                                ],
-                                headers="keys",
-                                tablefmt="psql",
-                                colalign=(
-                                    "left",
-                                    "left",
-                                    "left",
-                                    "left",
-                                    "right",
-                                    "right",
-                                    "right",
-                                    "right",
-                                ),
-                                showindex=False,
-                            )
-                        )
+            if status == "ready":
+                os.system("cls" if os.name == "nt" else "clear")
+                print("[WS]: ", message)
+            elif status == "success":
+                status = "done"
+                df = pd.DataFrame(data)
+                df = df[
+                    [
+                        "datetime",
+                        "symbol",
+                        "tradingsymbol",
+                        "signal",
+                        "lot_size",
+                        "signal_price",
+                        "entry_price",
+                        "stop_loss",
+                    ]
+                ]
+                print(
+                    tabulate(
+                        df,
+                        headers="keys",
+                        tablefmt="psql",
+                        colalign=(
+                            "left",
+                            "left",
+                            "left",
+                            "left",
+                            "right",
+                            "right",
+                            "right",
+                            "right",
+                        ),
+                        showindex=False,
+                    )
+                )
 
-                    else:
-                        print("[WS] Non-list JSON payload:", payload)
-                except Exception as e:
-                    print("[WS] JSON decode error:", e, "raw:", msg)
-
-                state = "expect_completed"
-            elif state == "expect_completed":
-                if msg.lower() == "completed":
-                    print("[WS] Complete received. Cycle finished.")
-                else:
-                    print("[WS] Unexpected message during 'expect_completed':", msg)
-                state = "idle"  # reset for next sequence
+    except Exception as e:
+        print(f"WebSocket connection error: {e}")
+        if websocket:
+            await websocket.close()
+    finally:
+        if websocket:
+            await websocket.close()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,2 @@
+datetime,symbol,tradingsymbol,instrument_token,trading_model,signal,signal_price,lot_size,entry_price,stop_loss
+2026-01-16 10:20:00,MARICO,MARICO26JANFUT,12699138,KBDT,buy,762.05,1200,762.3,760.65
