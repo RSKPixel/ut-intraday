@@ -124,7 +124,7 @@ def main():
                             "signal_price": row["signal_price"],
                             "lot_size": lot_size,
                             "entry_price": idf.at[i - 1, "close"],
-                            "stop_loss": idf.at[i - 1, "low"],
+                            "stop_loss": row["stop_loss"],
                         }
                     )
                     break
@@ -144,7 +144,7 @@ def main():
                             "signal_price": row["signal_price"],
                             "lot_size": lot_size,
                             "entry_price": idf.at[i - 1, "close"],
-                            "stop_loss": idf.at[i - 1, "high"],
+                            "stop_loss": row["stop_loss"],
                         }
                     )
                     break

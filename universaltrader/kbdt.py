@@ -12,6 +12,7 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
     df_original["kbdt"] = None
     df_original["tradingmodel"] = "kbdt"
     df_original["signal_price"] = np.nan
+    df_original["stop_loss"] = np.nan
     # df_original["entry_day_sl"] = np.nan
 
     df = df.copy()
@@ -20,6 +21,7 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
         # Bullish Setup
         # Check for previous dow cross to identify setup candle
         buy_price = df.iloc[-1]["dow_cross"]
+        sl_price = df.iloc[-2]["low"]
 
         lwv = df.iloc[-1]["lwv"]
         sell_price = np.nan
@@ -38,6 +40,7 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
         if setup_bar and profit_points < 0 and lwv:
             df_original.at[df.index[-1], "kbdt"] = "buy"
             df_original.at[df.index[-1], "signal_price"] = buy_price
+            df_original.at[df.index[-1], "stop_loss"] = sl_price
             df_original.at[df.index[-1], "signal"] = True
 
     if df.iloc[-1]["dow_cross"] and df.iloc[-1]["direction"] == -1:
@@ -45,6 +48,8 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
         # Check for previous dow cross to identify setup candle
 
         sell_price = df.iloc[-1]["dow_cross"]
+        sl_price = df.iloc[-2]["high"]
+
         lwv = df.iloc[-1]["lwv"]
         buy_price = np.nan
         profit_points = np.nan
@@ -62,6 +67,7 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
         if setup_bar and profit_points < 0 and lwv:
             df_original.at[df.index[-1], "kbdt"] = "sell"
             df_original.at[df.index[-1], "signal_price"] = sell_price
+            df_original.at[df.index[-1], "stop_loss"] = sl_price
             df_original.at[df.index[-1], "signal"] = True
 
     return df_original
