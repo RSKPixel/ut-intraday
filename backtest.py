@@ -11,11 +11,7 @@ def main():
 
     df = pd.read_sql_query(sql, engine)
     df["entry_date"] = pd.to_datetime(df["datetime"]).dt.date
-    df["close_0"] = np.nan
-    df["close_1"] = np.nan
-    df["close_2"] = np.nan
-    df["close_3"] = np.nan
-    df["close_4"] = np.nan
+    df["close"] = np.nan
 
     for index, row in df.iterrows():
         sql = text(
@@ -30,55 +26,42 @@ def main():
         )
         df_eod = df_eod[:5]
 
-        try:
-            df.at[index, "close_0"] = df_eod["close"].iloc[0]
-            df.at[index, "close_1"] = df_eod["close"].iloc[1]
-            df.at[index, "close_2"] = df_eod["close"].iloc[2]
-            df.at[index, "close_3"] = df_eod["close"].iloc[3]
-            df.at[index, "close_4"] = df_eod["close"].iloc[4]
-        except IndexError:
-            pass
+        if df_eod.empty:
+            continue
 
-    df["pnl_0"] = np.where(
-        df["signal"] == "buy",
-        (df["close_0"] - df["signal_price"]) * df["lot_size"],
-        (df["signal_price"] - df["close_0"]) * df["lot_size"],
-    )
+        df.at[index, "close"] = df_eod["close"].iloc[0]
 
-    df["pnl_1"] = np.where(
+    df["pnl"] = np.where(
         df["signal"] == "buy",
-        (df["close_1"] - df["signal_price"]) * df["lot_size"],
-        (df["signal_price"] - df["close_1"]) * df["lot_size"],
+        (df["close"] - df["signal_price"]) * df["lot_size"],
+        (df["signal_price"] - df["close"]) * df["lot_size"],
     )
-
-    df["pnl_2"] = np.where(
+    df["sale_value"] = np.where(
         df["signal"] == "buy",
-        (df["close_2"] - df["signal_price"]) * df["lot_size"],
-        (df["signal_price"] - df["close_2"]) * df["lot_size"],
+        df["close"] * df["lot_size"],
+        df["signal_price"] * df["lot_size"],
     )
-
-    df["pnl_3"] = np.where(
-        df["signal"] == "buy",
-        (df["close_3"] - df["signal_price"]) * df["lot_size"],
-        (df["signal_price"] - df["close_3"]) * df["lot_size"],
-    )
-
-    df["pnl_4"] = np.where(
-        df["signal"] == "buy",
-        (df["close_4"] - df["signal_price"]) * df["lot_size"],
-        (df["signal_price"] - df["close_4"]) * df["lot_size"],
-    )
+    df["pnlp"] = (df["pnl"] / df["sale_value"]) * 100
 
     # group by portfolio and calculate total pnl
     df_summary = df.groupby("entry_date").agg(
-        total_pnl_0=pd.NamedAgg(column="pnl_0", aggfunc="sum"),
-        total_pnl_1=pd.NamedAgg(column="pnl_1", aggfunc="sum"),
-        total_pnl_2=pd.NamedAgg(column="pnl_2", aggfunc="sum"),
-        total_pnl_3=pd.NamedAgg(column="pnl_3", aggfunc="sum"),
-        total_pnl_4=pd.NamedAgg(column="pnl_4", aggfunc="sum"),
+        total_pnl=pd.NamedAgg(column="pnl", aggfunc="sum"),
+        trade_count=pd.NamedAgg(column="pnl", aggfunc="count"),
+        total_trade_value=pd.NamedAgg(column="sale_value", aggfunc="sum"),
+        profit_trades=pd.NamedAgg(column="pnl", aggfunc=lambda x: (x > 0).sum()),
+        loss_trades=pd.NamedAgg(column="pnl", aggfunc=lambda x: (x < 0).sum()),
+        profits=pd.NamedAgg(column="pnl", aggfunc=lambda x: (x[x > 0]).sum()),
+        losses=pd.NamedAgg(column="pnl", aggfunc=lambda x: (x[x < 0]).sum()),
     )
 
-    print(df_summary.to_clipboard())
+    df_summary["pnlp"] = (
+        df_summary["total_pnl"] / df_summary["total_trade_value"]
+    ) * 100
+
+    df_summary = df_summary.round(2)
+
+    print(df_summary)
+    df_summary.to_clipboard(index=True, header=True)
 
 
 if __name__ == "__main__":
