@@ -11,11 +11,12 @@ from rich.live import Live
 from time import sleep
 from psycopg2.extras import execute_values
 from sqlalchemy.sql import text
-import redis
+
+# import redis
 import json
 
 console = Console()
-r = redis.Redis(host="localhost", port=6379, db=0)
+# r = redis.Redis(host="localhost", port=6379, db=0)
 
 
 def main():
@@ -24,11 +25,11 @@ def main():
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Universal Trader - Key Breakout Daily Dow Theory Scanner",
     )
-    r.publish(
-        "ut_status", json.dumps({"status": "ready", "data": [], "message": "Ready"})
-    )
+    # r.publish(
+    #     "ut_status", json.dumps({"status": "ready", "data": [], "message": "Ready"})
+    # )
     today = datetime.now().date()
-    yesterday = today - pd.Timedelta(days=3)
+    yesterday = today - pd.Timedelta(days=4)
 
     kite, status = kite_connect()
     if kite is None:
@@ -38,9 +39,9 @@ def main():
             "data": [],
             "message": f"Kite Connect failed: {status}",
         }
-        r.publish("ut_status", json.dumps(payload))
+        # r.publish("ut_status", json.dumps(payload))
         return
-    error = kiteconnect_backfill(timeframe="D", exchange="NFO", no_of_candles=3)
+    error = kiteconnect_backfill(timeframe="D", exchange="NFO", no_of_candles=4)
 
     if error:
         error_df = pd.DataFrame(error)
@@ -50,7 +51,7 @@ def main():
             "data": [],
             "message": "Backfill error",
         }
-        r.publish("ut_status", json.dumps(payload))
+        # r.publish("ut_status", json.dumps(payload))
 
     instruments = fetch_instruments()
 
@@ -151,16 +152,16 @@ def main():
     entry = pd.DataFrame(entry)
     if entry.empty:
         print("\nNo breakout signals found.")
-        r.publish(
-            "ut_status",
-            json.dumps(
-                {
-                    "status": "success",
-                    "data": [],
-                    "message": "No breakout signals found.",
-                }
-            ),
-        )
+        # r.publish(
+        #     "ut_status",
+        #     json.dumps(
+        #         {
+        #             "status": "success",
+        #             "data": [],
+        #             "message": "No breakout signals found.",
+        #         }
+        #     ),
+        # )
         return
     entry = entry.sort_values(by="datetime")
 
@@ -184,7 +185,7 @@ def main():
         "message": f"{len(entry)} breakout signals found.",
         "data": entry.to_dict(orient="records"),
     }
-    r.publish("ut_status", json.dumps(payload))
+    # r.publish("ut_status", json.dumps(payload))
 
     print(
         tabulate(
@@ -251,7 +252,7 @@ def main():
         "data": [],
         "message": "Scanning completed.",
     }
-    r.publish("ut_status", json.dumps(payload))
+    # r.publish("ut_status", json.dumps(payload))
     return
 
 
