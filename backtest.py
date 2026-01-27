@@ -36,11 +36,14 @@ def main():
         (df["close"] - df["signal_price"]) * df["lot_size"],
         (df["signal_price"] - df["close"]) * df["lot_size"],
     )
+
     df["sale_value"] = np.where(
         df["signal"] == "buy",
         df["close"] * df["lot_size"],
         df["signal_price"] * df["lot_size"],
     )
+
+    df["pnl"] = df["pnl"] - (df["sale_value"] * 0.0003)  # brokerage cost
     df["pnlp"] = (df["pnl"] / df["sale_value"]) * 100
 
     # group by portfolio and calculate total pnl
