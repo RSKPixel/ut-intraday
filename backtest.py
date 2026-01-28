@@ -83,7 +83,7 @@ def main(period: int = 0):
             (df_summary["profit_trades"].sum() / df_summary["trade_count"].sum()) * 100,
             2,
         ),
-        "Rate of Ruin %": round(ror(df), 2),
+        "Risk of Ruin %": round(ror(df), 2),
     }
 
     df_overall = pd.DataFrame(list(data.items()), columns=["Metric", "Value"])
