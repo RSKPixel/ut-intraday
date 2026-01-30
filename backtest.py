@@ -9,7 +9,7 @@ import os
 
 def main(period: int = 0):
 
-    sql = text("SELECT * FROM tfw_signals ORDER BY datetime ASC")
+    sql = text("SELECT * FROM tfw_signals WHERE entry = true ORDER BY datetime ASC")
 
     df = pd.read_sql_query(sql, engine)
     # df = df[df["datetime"].dt.time < pd.to_datetime("15:00").time()]

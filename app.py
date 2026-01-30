@@ -126,6 +126,7 @@ def main():
                             "lot_size": lot_size,
                             "entry_price": idf.at[i - 1, "close"],
                             "stop_loss": row["stop_loss"],
+                            "entry": True,
                         }
                     )
                     break
@@ -146,6 +147,7 @@ def main():
                             "lot_size": lot_size,
                             "entry_price": idf.at[i - 1, "close"],
                             "stop_loss": row["stop_loss"],
+                            "entry": True,
                         }
                     )
                     break
