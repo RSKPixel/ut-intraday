@@ -316,8 +316,8 @@ def wait_until_next_v2(waiting_minutes=1, seconds=1):
         if date.weekday() == 5:  # Saturday
             date += timedelta(days=2)
         # If Sunday -> add 1 day (to Monday)
-        elif date.weekday() == 6:  # Sunday
-            date += timedelta(days=1)
+        # elif date.weekday() == 6:  # Sunday
+        #     date += timedelta(days=1)
         return date.replace(
             hour=market_open_hour, minute=market_open_minute, second=0, microsecond=0
         )
