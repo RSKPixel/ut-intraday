@@ -154,16 +154,6 @@ def main():
     entry = pd.DataFrame(entry)
     if entry.empty:
         print("\nNo breakout signals found.")
-        # r.publish(
-        #     "ut_status",
-        #     json.dumps(
-        #         {
-        #             "status": "success",
-        #             "data": [],
-        #             "message": "No breakout signals found.",
-        #         }
-        #     ),
-        # )
         return
     entry = entry.sort_values(by="datetime")
 

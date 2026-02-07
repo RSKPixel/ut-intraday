@@ -1,0 +1,4 @@
+datetime,symbol,tradingsymbol,instrument_token,trading_model,signal,signal_price,lot_size,entry_price,stop_loss,entry
+2026-02-06 09:30:00,TATATECH,TATATECH26FEBFUT,15228418,KBDT,sell,629.45,800,628.35,656.55,True
+2026-02-06 10:05:00,CIPLA,CIPLA26FEBFUT,15177986,KBDT,sell,1323.5,375,1322.7,1341.4,True
+2026-02-06 15:05:00,SAIL,SAIL26FEBFUT,15222274,KBDT,buy,161.2,4700,161.3,152.59,True
