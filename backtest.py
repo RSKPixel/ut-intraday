@@ -5,13 +5,29 @@ from sqlalchemy.sql import text
 import numpy as np
 import sys
 import os
+from datetime import datetime, timedelta
 
 
-def main(period: int = 0):
+def main(period: int = 0, range: int = -1):
 
-    sql = text("SELECT * FROM tfw_signals WHERE entry = true ORDER BY datetime ASC")
+    if range >= 0:
+        todate = datetime.now().strftime("%Y-%m-%d")
+        fromdate = datetime.now() - timedelta(days=range)
+        fromdate = fromdate.strftime("%Y-%m-%d")
+        sql = text(
+            """
+            SELECT * FROM tfw_signals
+            WHERE entry = true AND DATE(datetime AT TIME ZONE 'Asia/Kolkata') >= :fromdate AND DATE(datetime AT TIME ZONE 'Asia/Kolkata') <= :todate
+            ORDER BY datetime ASC
+            """
+        )
+        df = pd.read_sql_query(
+            sql, engine, params={"fromdate": fromdate, "todate": todate}
+        )
+    else:
+        sql = text("SELECT * FROM tfw_signals WHERE entry = true ORDER BY datetime ASC")
+        df = pd.read_sql_query(sql, engine)
 
-    df = pd.read_sql_query(sql, engine)
     # df = df[df["datetime"].dt.time < pd.to_datetime("15:00").time()]
     df["entry_date"] = pd.to_datetime(df["datetime"]).dt.date
     df["close"] = np.nan
@@ -97,7 +113,7 @@ def main(period: int = 0):
                 "profit_trades",
                 "loss_trades",
             ]
-        ]
+        ][-7:]
     )
     print(df_overall)
 
@@ -140,10 +156,12 @@ def ror(df: pd.DataFrame) -> float:
 if __name__ == "__main__":
     period = 0
     os.system("cls" if os.name == "nt" else "clear")
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
         try:
             period = int(sys.argv[1])
+            range = int(sys.argv[2])
         except ValueError:
+            range = -1
             period = 0
 
-    main(period=period)
+    main(period=period, range=range)
