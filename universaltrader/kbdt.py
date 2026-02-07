@@ -70,6 +70,4 @@ def signal(df: pd.DataFrame, symbol: str = "") -> pd.DataFrame:
             df_original.at[df.index[-1], "stop_loss"] = sl_price
             df_original.at[df.index[-1], "signal"] = True
 
-    if symbol == "TATAELXSI":
-        print(df)
     return df_original

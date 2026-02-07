@@ -1,0 +1,2 @@
+datetime,symbol,tradingsymbol,instrument_token,trading_model,signal,signal_price,lot_size,entry_price,stop_loss,entry
+2026-02-06 10:05:00,CIPLA,CIPLA26FEBFUT,15177986,KBDT,sell,1323.5,375,1322.7,1341.4,True
